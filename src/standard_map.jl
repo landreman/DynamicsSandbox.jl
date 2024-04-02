@@ -57,11 +57,11 @@ function plot_standard_map_Poincare(k, n, nx, ny)
             plot_standard_map_trajectory(k, x0, y0, n)
         end
     end
-    plot_fixed_point_and_eigvals(k, -0.5, 0.0)
+    plot_stable_and_unstable_manifolds(k, -0.5, 0.0)
     p
 end
 
-function plot_fixed_point_and_eigvals(k, x0, y0)
+function plot_stable_and_unstable_manifolds(k, x0, y0)
     M = standard_map_gradient(x0, y0, k)
     eigvals, eigvects = eigen(M)
     @assert prod(eigvals) ≈ 1
@@ -70,8 +70,10 @@ function plot_fixed_point_and_eigvals(k, x0, y0)
     for j in 1:2
         if eigvals[j] > 1
             color = :red
+            map_function = standard_map
         else
             color = :blue
+            map_function = standard_map_inverse
         end
         plot!(
             [x0, x0 + ϵ * eigvects[1, j]],
@@ -80,19 +82,45 @@ function plot_fixed_point_and_eigvals(k, x0, y0)
             label=nothing,
             )
 
-        # for log10δ in range(-5, -3, length=3000)
-        #     δ = 10 ^ log10δ
-        amplitudes = collect(range(0, log(eigvals[j]), length=100))
-        for preδ in amplitudes[1:end - 1]
-            δ = 1e-3 * exp(preδ)
-            for eigval_sign in [-1, 1]
-                plot_standard_map_trajectory(
-                    k, 
-                    x0 + eigval_sign * δ * eigvects[1, j],
-                    y0 + eigval_sign * δ * eigvects[2, j],
-                    10;
-                    color=color)
+        for eigval_sign in [-1, 1]
+
+            # Set how many points to plot along the manifolds and how far to trace them:
+            n_points_per_eigenvalue = 50
+            n_repetitions_of_eigenvalue = 10
+            n_points_per_manifold = n_points_per_eigenvalue * n_repetitions_of_eigenvalue
+            data = zeros(n_points_per_manifold, 2)
+
+            # The first set of n_points_per_eigenvalue points are given by multiples of the eigenvector:
+            initial_amplitude = 1e-2
+            for i in 1:n_points_per_eigenvalue
+                amplitude = eigval_sign * initial_amplitude * exp(log(eigvals[j]) * (i - 1) / n_points_per_eigenvalue)
+                data[i, :] .= [x0, y0] + amplitude * eigvects[:, j]
+            end
+
+            # To get the remaining points, iterate the map:
+            for i in (n_points_per_eigenvalue + 1):n_points_per_manifold
+                data[i, :] = map_function(data[i - n_points_per_eigenvalue, :]..., k)
+            end
+
+            scatter!(
+                shift_to_square_around_origin.(data[:, 1]),
+                shift_to_square_around_origin.(data[:, 2]),
+                color=color,
+                label=nothing,
+                markerstrokewidth=0,
+                markersize=1,
+                )
+
+            # Connect the dots, if they don't cross the edges:
+            threshold = 0.1
+            for i in 1:(n_points_per_manifold - 1)
+                x = shift_to_square_around_origin.(data[i:(i+1), 1])
+                y = shift_to_square_around_origin.(data[i:(i+1), 2])
+                if abs(x[2] - x[1]) < threshold && abs(y[2] - y[1]) < threshold
+                    plot!(x, y, color=color, label=nothing)
+                end
             end
         end
+
     end
 end
