@@ -1,5 +1,10 @@
 module DynamicsSandbox
 
-# Write your package code here.
+using Random
+using LinearAlgebra
+using Plots
+
+include("standard_map.jl")
+include("results.jl")
 
 end

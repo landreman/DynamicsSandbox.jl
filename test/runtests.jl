@@ -1,6 +1,1 @@
-using DynamicsSandbox
-using Test
-
-@testset "DynamicsSandbox.jl" begin
-    # Write your tests here.
-end
+include("test_standard_map.jl")
