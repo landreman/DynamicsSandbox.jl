@@ -1,6 +1,5 @@
 function standard_map(x, y, k)
     yprime = mod(y - (k / (2π)) * sin(2π * x), 1)
-    #yprime = y - (k / (2π)) * sin(2π * x)
     return [mod(x + yprime, 1), yprime]
 end
 
@@ -66,7 +65,6 @@ function plot_stable_and_unstable_manifolds(k, x0, y0)
     eigvals, eigvects = eigen(M)
     @assert prod(eigvals) ≈ 1
     ϵ = 0.01
-    r = [x0, y0]
     for j in 1:2
         if eigvals[j] > 1
             color = :red
@@ -86,7 +84,7 @@ function plot_stable_and_unstable_manifolds(k, x0, y0)
 
             # Set how many points to plot along the manifolds and how far to trace them:
             n_points_per_eigenvalue = 50
-            n_repetitions_of_eigenvalue = 10
+            n_repetitions_of_eigenvalue = 7
             n_points_per_manifold = n_points_per_eigenvalue * n_repetitions_of_eigenvalue
             data = zeros(n_points_per_manifold, 2)
 
@@ -123,4 +121,93 @@ function plot_stable_and_unstable_manifolds(k, x0, y0)
         end
 
     end
+end
+
+function find_stable_unstable_manifold_intersection(k)
+    x0 = 0.5
+    y0 = 0
+
+    # Initial guesses for the λ parameters. The precise values are not critical, but they
+    # should be small compared to 1.
+    λs = 1e-3
+    λu = λs
+    # At the end of variable names, "s" = stable, "u" = unstable.
+
+    # Rough estimate of the distance between the adjacent X-points:
+    estimated_distance = 1.0
+
+    # Find the directions by which the (un)stable manifolds move out from the X point:
+    M = standard_map_gradient(x0, y0, k)
+    eigvals, eigvects = eigen(M)
+    if eigvals[1] < eigvals[2]
+        vs = eigvects[:, 1]
+        vu = eigvects[:, 2]
+    else
+        vu = eigvects[:, 1]
+        vs = eigvects[:, 2]
+    end
+
+    # Determine how many iterates of the map are needed:
+    ru = [x0, y0] + λu * vu
+    rs = [x0, y0] + λs * vs
+    N = 0
+    last_distance = 1e100
+    while true
+        ru = standard_map(ru..., k)
+        rs = standard_map_inverse(rs..., k)
+        N += 1
+        dr = shift_to_square_around_origin.(ru) - shift_to_square_around_origin.(rs)
+        distance = norm(dr)
+        # @show N, ru, rs, dr, distance
+        @show N, distance
+        # # Find the distance between ru and rs, considering periodicity of the domain:
+        # distance = min(
+        #     norm(dr + [-1, -1]),
+        #     norm(dr + [0, -1]),
+        #     norm(dr + [1, -1]),
+        #     norm(dr + [-1, 0]),
+        #     norm(dr + [0, 0]),
+        #     norm(dr + [1, 0]),
+        #     norm(dr + [-1, 1]),
+        #     norm(dr + [0, 1]),
+        #     norm(dr + [1, 1]),
+        #     )
+        #@show N, distance
+        if distance > last_distance
+            break
+        end
+        last_distance = distance
+        # if distance > 0.3 * estimated_distance
+        #     break
+        # end
+    end
+
+    function residual(λ)
+        λu, λs = λ
+        ru = [x0, y0] + λu * vu
+        rs = [x0, y0] + λs * vs
+        # Interate the forward and backward maps N times:
+        for j in 1:N
+            ru = standard_map(ru..., k)
+            rs = standard_map_inverse(rs..., k)
+        end
+        @show ru, rs
+        #scatter!([shift_to_square_around_origin(ru[1])], [shift_to_square_around_origin(ru[2])], color=:red)
+        #scatter!([shift_to_square_around_origin(rs[1])], [shift_to_square_around_origin(rs[2])], color=:blue)
+        return shift_to_square_around_origin.(ru) - shift_to_square_around_origin.(rs)
+    end
+
+    # Use Newton's method with finite differences to solve for the λ parameters:
+    solution = nlsolve(residual, [λu, λs])
+    λu, λs = solution.zero
+
+    ru = [x0, y0] + λu * vu
+    rs = [x0, y0] + λs * vs
+    # Interate the forward and backward maps N times:
+    for j in 1:N
+        ru = standard_map(ru..., k)
+        rs = standard_map_inverse(rs..., k)
+    end
+    scatter!([shift_to_square_around_origin(ru[1])], [shift_to_square_around_origin(ru[2])], color=:red, markershape=:cross, label=nothing)
+    scatter!([shift_to_square_around_origin(rs[1])], [shift_to_square_around_origin(rs[2])], color=:blue, markershape=:xcross, label=nothing)
 end
