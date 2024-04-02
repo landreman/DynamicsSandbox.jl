@@ -1,0 +1,13 @@
+name = "DynamicsSandbox"
+uuid = "7530eabe-94d0-4a07-9638-35146bc7fb55"
+authors = ["Matt Landreman"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
