@@ -177,13 +177,9 @@ function find_stable_unstable_manifold_intersection(k)
             break
         end
         last_distance = distance
-        # if distance > 0.3 * estimated_distance
-        #     break
-        # end
     end
 
-    function residual(λ)
-        λu, λs = λ
+    function λ_to_r(λu, λs)
         ru = [x0, y0] + λu * vu
         rs = [x0, y0] + λs * vs
         # Interate the forward and backward maps N times:
@@ -191,23 +187,34 @@ function find_stable_unstable_manifold_intersection(k)
             ru = standard_map(ru..., k)
             rs = standard_map_inverse(rs..., k)
         end
+        return ru, rs
+    end
+
+    function residual(λ)
+        λu, λs = λ
+        ru, rs = λ_to_r(λu, λs)
         @show ru, rs
-        #scatter!([shift_to_square_around_origin(ru[1])], [shift_to_square_around_origin(ru[2])], color=:red)
-        #scatter!([shift_to_square_around_origin(rs[1])], [shift_to_square_around_origin(rs[2])], color=:blue)
         return shift_to_square_around_origin.(ru) - shift_to_square_around_origin.(rs)
     end
 
     # Use Newton's method with finite differences to solve for the λ parameters:
+    println("Solving for 1st homoclinic point")
     solution = nlsolve(residual, [λu, λs])
-    λu, λs = solution.zero
+    @show solution
+    λ1u, λ1s = solution.zero
+    ru, rs = λ_to_r(λ1u, λ1s)
+    scatter!([shift_to_square_around_origin(ru[1])], [shift_to_square_around_origin(ru[2])], color=:red, markershape=:cross, label=nothing, markersize=6, markerstrokewidth=2)
+    scatter!([shift_to_square_around_origin(rs[1])], [shift_to_square_around_origin(rs[2])], color=:blue, markershape=:xcross, label=nothing, markersize=6, markerstrokewidth=2)
 
-    ru = [x0, y0] + λu * vu
-    rs = [x0, y0] + λs * vs
-    # Interate the forward and backward maps N times:
-    for j in 1:N
-        ru = standard_map(ru..., k)
-        rs = standard_map_inverse(rs..., k)
-    end
-    scatter!([shift_to_square_around_origin(ru[1])], [shift_to_square_around_origin(ru[2])], color=:red, markershape=:cross, label=nothing)
-    scatter!([shift_to_square_around_origin(rs[1])], [shift_to_square_around_origin(rs[2])], color=:blue, markershape=:xcross, label=nothing)
+    # Initial guess for the 2nd homoclinic point:
+    factor = sqrt(eigvals[1])
+    λ2u = λ1u * factor
+    λ2s = λ1s / factor
+    println("Solving for 2nd homoclinic point")
+    solution = nlsolve(residual, [λ2u, λ2s])
+    @show solution
+    λ2u, λ2s = solution.zero
+    ru, rs = λ_to_r(λ2u, λ2s)
+    scatter!([shift_to_square_around_origin(ru[1])], [shift_to_square_around_origin(ru[2])], color=:magenta, markershape=:cross, label=nothing, markersize=6, markerstrokewidth=2)
+    scatter!([shift_to_square_around_origin(rs[1])], [shift_to_square_around_origin(rs[2])], color=:darkgreen, markershape=:xcross, label=nothing, markersize=6, markerstrokewidth=2)
 end
