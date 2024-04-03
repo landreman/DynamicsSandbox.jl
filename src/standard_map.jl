@@ -133,9 +133,6 @@ function find_stable_unstable_manifold_intersection(k)
     λu = λs
     # At the end of variable names, "s" = stable, "u" = unstable.
 
-    # Rough estimate of the distance between the adjacent X-points:
-    estimated_distance = 1.0
-
     # Find the directions by which the (un)stable manifolds move out from the X point:
     M = standard_map_gradient(x0, y0, k)
     eigvals, eigvects = eigen(M)
